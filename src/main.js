@@ -7,6 +7,7 @@ const User = require('./mongo/users');
 const Board = require('./mongo/boards');
 
 const PORT = 3000
+
 const app = express()
 app.use(express.json());
 app.use(function(err, req, res, next) {
@@ -15,87 +16,91 @@ app.use(function(err, req, res, next) {
 });
 
 const schema = buildSchema(` 
-input UserInput {       
+    input UserInput {       
         firstName: String       
         lastName: String       
-        emailAddress: String!       
-        password: String!     
+        emailAddress: String!           
     }    
-      
     type User {        
         _id: String        
         firstName: String        
         lastName: String        
         emailAddress: String
     }  
-     input BoardInput {            
+    
+    
+    input BoardInput {            
         owner: String        
     } 
-     type Board {        
+    type Board {        
         _id: String               
         owner: String 
     }
-     input editorInput { 
+    
+    
+    input EditorInput { 
         boardId: String           
         editor: String        
     } 
-     type Editor { 
+    type Editor { 
         boardId: String                      
-        editor: String 
+        editor: [String] 
     }
-     input postInput {
-        boardId:String,
-        text:String,
-        author:String,
-        x:Number,
-        y:Number,
-       }
-     type Post { 
+    
+    
+    input PostInput {
+        boardId:String
+        text:String
+        author:String
+        x:Int
+        y:Int
+    }
+    type Post { 
         _id: String
-        text:String,
-        author:String,
-        x:Number,
-        y:Number,
-        }
-     input updatepostInput {
-        boardId:String,
-        postId:String,
-        text:String,
-        author:String,
-        x:Number,
-        y:Number,
-       }   
-     input deletepostInput { 
+        text:String
+        author:String
+        x:Int
+        y:Int
+    }
+    
+    
+    input UpdatePostInput {
+        boardId:String
+        postId:String
+        text:String
+    }   
+    input DeletePostInput { 
         boardId: String           
         postId: String        
     } 
-     type DeletePost { 
-                              
+    type DeletePost {                    
         postId: String  
     }   
-    input deleteBoardInput { 
-        boardId: String           
-              
+   
+    
+    input DeleteBoardInput { 
+        boardId: String                
     } 
-     type DeleteBoard {            
+    type DeleteBoard {            
         boardId: String  
     }
       
+      
     type Query {     
-        userById(id:String!): User     
-        userByName(name:String!): User         
+        userById(id:String!): User  
+        boardById(id:String!): Board      
     }    
     type Mutation {     
         createUser(user: UserInput): User   
         createBoard(board: BoardInput): Board 
-        deleteBoard(deleteboard: deleteBoardInput): DeleteBoard
+        deleteBoard(deleteBoard: DeleteBoardInput): DeleteBoard
         
-        addBoardEditor(editor: editorInput): Editor   
-        deleteBoardEditor(editor: editorInput): Editor 
+        addBoardEditor(editor: EditorInput): Editor   
+        deleteBoardEditor(editor: EditorInput): Editor 
         
-        addBoardPost(post: postInput): Post
-        deleteBoardPost(deletePost: deletepostInput): DeletePost
-        updateBoardPost(post: updatepostInput): Post
+        addBoardPost(post: PostInput): Post
+        deleteBoardPost(deletePost: DeletePostInput): DeletePost
+        updateBoardPost(post: UpdatePostInput): Post
     }  
      
     `);
@@ -106,10 +111,6 @@ app.use('/graphql', graphqlHTTP({
 //USERS
         async userById({id}){
             const user = await User.findById(id);
-            return user;
-        },
-        async userByName({name}){
-            const user = await User.findOne({emailAddress: name});
             return user;
         },
         async createUser({user}){
@@ -124,20 +125,14 @@ app.use('/graphql', graphqlHTTP({
             await model.save();
             return model;
         },
-        async addBoardEditor({editor}){
-
+        async addEditor({editor}){
             const board = await Board.findOne({_id: editor.boardId});
-            console.log(board)
-            board.editor.push(editor.editor);
-
+            board.editors.push(editor.editor);
             await board.save();
         },
-        async deleteBoard({deleteboard}){
-            console.log(deleteboard)
-            Board.deleteOne({ _id: deleteboard.boardId}, function (err) {
-                if(err) console.log(err);
-                console.log("Successfully deleted.");
-            });
+        async deleteBoard({deleteBoard}){
+            const board = await Board.deleteOne({ _id: deleteBoard.boardId});
+            console.log(board);
         },
 
 //POSTS
@@ -147,54 +142,26 @@ app.use('/graphql', graphqlHTTP({
             board.post.push(post);
             await board.save();
         },
-        async updateBoardPost({post}){
-            console.log(post)
-            const board = await Board.findOne({_id: post.boardId});
-            const postUpdate = post.postId;
 
-            console.log(board)
-            for(let i=0;i < board.posts.length; i++){
-                if (postUpdate==board.posts[i]._id){
-
-                    board.posts[i].overwrite(post);
-
-                    console.log(board);
-                    await board.save();
-                    break
-                }else {
-                    console.log('Nothing there.');
-                }
-            }
-            await board.save();
+        async updatePost({post}){
+            const board = await Board.findOneAndUpdate(
+                {_id: post.boardId, "posts._id" : post.postId},
+                {$set: {"posts.$.text": post.text}});
+            console.log(board);
         },
-        async deleteBoardPost({deletePost}){
-            const board = await Board.findOne({_id: deletePost.boardId});
-            let post = deletePost.postId;
 
-            for(let i=0;i < board.post.length; i++){
-                if (post==board.post[i]._id){
-                    board.post.splice(i,1);
-                    await board.save();
-                    break
-                }else {
-                    console.log('Nothing there.');
-                }
-            }
-
+        async deletePost({deletePost}){
+            const board = await Board.updateOne(
+                {_id: deletePost.boardId},
+                {$pull: {posts: {_id: deletePost.postId}}});
+            console.log(board);
         },
-        async deleteBoardEditor({editor}){
-            const board = await Board.findOne({_id: editor.boardId});
-            let editorId = editor.editor;
 
-            for(let i=0;i < board.editor.length; i++){
-                if (editorId==board.editor[i]){
-                    board.editor.splice([i]);
-                    board.save();
-                    console.log(board.editor);
-                }else {
-                    console.log(board.editor[i]);
-                }
-            }
+        async deleteEditor({deleteEditor}){
+            const board = await Board.updateOne(
+                {_id: deleteEditor.boardId},
+                {$pull: {editors: deleteEditor.editorId}});
+            console.log(board);
         }
     },
     graphiql: true,
@@ -217,4 +184,3 @@ mongoose.connect('mongodb://localhost:27017', {
         console.error('Failed to establish connection to mongoDB.', error);
     }
 });
-

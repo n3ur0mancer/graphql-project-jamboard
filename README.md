@@ -23,3 +23,8 @@ On http://localhost:3000/ the message â€œApp listening at http://localhost:3000â
 
 If the connection fails the messahe "Failed to establish connection to mongoDB." will be displayed.
 
+---
+
+## GraphQL 
+
+To use the GraphiQL editor refer to http://localhost:3000/graphql .
