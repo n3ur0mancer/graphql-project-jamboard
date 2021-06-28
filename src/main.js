@@ -140,7 +140,8 @@ app.use('/graphql', graphqlHTTP({
 //EDITORS
         async addBoardEditor({editor}){
             const board = await Board.findOne(
-                {_id: editor.boardId});
+                {_id: editor.boardId}
+                );
             board.editor.push(editor.editor);
             await board.save();
         },
@@ -154,23 +155,19 @@ app.use('/graphql', graphqlHTTP({
 //POSTS
         async addBoardPost({post}){
             const board = await Board.findOne({_id: post.boardId});
-            console.log(board)
             board.post.push(post);
             await board.save();
         },
-
         async updateBoardPost({post}){
             const board = await Board.findOneAndUpdate(
                 {_id: post.boardId, "post._id" : post.postId},
-                {$set: {"post.$.text": post.text}}
-                );
+                {$set: {"post.$.text": post.text}});
         },
-
         async deleteBoardPost({deletePost}){
             const board = await Board.updateOne(
                 {_id: deletePost.boardId},
-                {$pull: {posts: {_id: deletePost.postId}}}
-                );
+                {$pull: {post: {_id: deletePost.postId}}
+                });
         },
     },
     graphiql: true,

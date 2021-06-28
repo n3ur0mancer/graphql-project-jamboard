@@ -135,7 +135,7 @@ Please note, that the owner id is not static, it only serves demonstration purpo
 mutation {
   updateBoardPost(post: {
     boardId: "60d9bbbe87eb9c8237e49a69", 
-    postId: "60d9ba5887eb9c8237e49a68", 
+    postId: "60d9db89684bf102a60c595d", 
     text: "Hmm, der Text ist neu..."}) 
   {
     text
