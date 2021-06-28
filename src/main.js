@@ -44,7 +44,7 @@ const schema = buildSchema(`
     } 
     type Editor { 
         boardId: String                      
-        editor: [String] 
+        editor: [String]
     }
     
     
@@ -84,11 +84,18 @@ const schema = buildSchema(`
     type DeleteBoard {            
         boardId: String  
     }
+    
+    input DeleteEditorInput {
+        boardId: String
+        editorId: String
+    }
+    type DeleteEditor {
+        editorId: String 
+    }
       
       
     type Query {     
-        userById(id:String!): User  
-        boardById(id:String!): Board      
+        userById(id:String!): User      
     }    
     type Mutation {     
         createUser(user: UserInput): User   
@@ -96,7 +103,7 @@ const schema = buildSchema(`
         deleteBoard(deleteBoard: DeleteBoardInput): DeleteBoard
         
         addBoardEditor(editor: EditorInput): Editor   
-        deleteBoardEditor(editor: EditorInput): Editor 
+        deleteEditor(deleteEditor: DeleteEditorInput): DeleteEditor
         
         addBoardPost(post: PostInput): Post
         deleteBoardPost(deletePost: DeletePostInput): DeletePost
@@ -125,14 +132,23 @@ app.use('/graphql', graphqlHTTP({
             await model.save();
             return model;
         },
-        async addEditor({editor}){
-            const board = await Board.findOne({_id: editor.boardId});
-            board.editors.push(editor.editor);
-            await board.save();
-        },
         async deleteBoard({deleteBoard}){
             const board = await Board.deleteOne({ _id: deleteBoard.boardId});
             console.log(board);
+        },
+
+//EDITORS
+        async addBoardEditor({editor}){
+            const board = await Board.findOne(
+                {_id: editor.boardId});
+            board.editor.push(editor.editor);
+            await board.save();
+        },
+        async deleteEditor({deleteEditor}){
+            const board = await Board.updateOne(
+                {_id: deleteEditor.boardId},
+                {$pull: {editor: deleteEditor.editorId}}
+            );
         },
 
 //POSTS
@@ -143,26 +159,19 @@ app.use('/graphql', graphqlHTTP({
             await board.save();
         },
 
-        async updatePost({post}){
+        async updateBoardPost({post}){
             const board = await Board.findOneAndUpdate(
-                {_id: post.boardId, "posts._id" : post.postId},
-                {$set: {"posts.$.text": post.text}});
-            console.log(board);
+                {_id: post.boardId, "post._id" : post.postId},
+                {$set: {"post.$.text": post.text}}
+                );
         },
 
-        async deletePost({deletePost}){
+        async deleteBoardPost({deletePost}){
             const board = await Board.updateOne(
                 {_id: deletePost.boardId},
-                {$pull: {posts: {_id: deletePost.postId}}});
-            console.log(board);
+                {$pull: {posts: {_id: deletePost.postId}}}
+                );
         },
-
-        async deleteEditor({deleteEditor}){
-            const board = await Board.updateOne(
-                {_id: deleteEditor.boardId},
-                {$pull: {editors: deleteEditor.editorId}});
-            console.log(board);
-        }
     },
     graphiql: true,
 }));
